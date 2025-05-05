@@ -101,7 +101,7 @@ public class MainMenu extends JFrame {
         createReservationButton.setOpaque(true);
         createReservationButton.setBorderPainted(false);
         createReservationButton.addActionListener(e -> {
-            this.setSize(400, 350);
+            this.setSize(800, 600);
             cardLayout.show(cardPanel, "CreateReservation");
         });
         buttonPanel.add(createReservationButton);
