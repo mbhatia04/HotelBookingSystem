@@ -5,7 +5,6 @@ import java.sql.SQLException;
 public class PostgresConnectionTest {
 
     public static void main(String[] args) {
-        // Replace these with your actual connection details
         String url = "jdbc:postgresql://localhost:5432/postgres";
         String user = "postgres";
         String password = "pewzapie";

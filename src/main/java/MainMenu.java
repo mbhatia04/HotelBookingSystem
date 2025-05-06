@@ -18,10 +18,12 @@ public class MainMenu extends JFrame {
         JPanel mainMenuPanel = createMainMenuPanel();
         JPanel reservationPanel = createReservationPanel();
         JPanel createReservationPanel = new CreateReservation(cardLayout, cardPanel, this);
+        JPanel guestProfilePanel = new GuestProfileScreen(cardLayout, cardPanel, this);
 
         cardPanel.add(mainMenuPanel, "MainMenu");
         cardPanel.add(reservationPanel, "ReservationMenu");
         cardPanel.add(createReservationPanel, "CreateReservation");
+        cardPanel.add(guestProfilePanel, "GuestProfile");
 
         add(cardPanel);
         setVisible(true);
@@ -92,7 +94,7 @@ public class MainMenu extends JFrame {
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         reservationPanel.add(titleLabel, BorderLayout.NORTH);
 
-        JPanel buttonPanel = new JPanel(new GridLayout(3, 1, 10, 10));
+        JPanel buttonPanel = new JPanel(new GridLayout(4, 1, 10, 10));
         buttonPanel.setOpaque(false);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 50, 10, 50));
 
@@ -111,6 +113,16 @@ public class MainMenu extends JFrame {
         viewReservationButton.setOpaque(true);
         viewReservationButton.setBorderPainted(false);
         buttonPanel.add(viewReservationButton);
+
+        JButton createGuestButton = new JButton("Create Guest Profile");
+        createGuestButton.setBackground(new Color(255, 204, 153));
+        createGuestButton.setOpaque(true);
+        createGuestButton.setBorderPainted(false);
+        createGuestButton.addActionListener(e -> {
+            this.setSize(500, 400);
+            cardLayout.show(cardPanel, "GuestProfile");
+        });
+        buttonPanel.add(createGuestButton);
 
         JButton returnButton = new JButton("Return");
         returnButton.setBackground(Color.LIGHT_GRAY);
