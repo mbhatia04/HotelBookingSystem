@@ -4,6 +4,11 @@ import java.sql.*;
 
 class CheckInScreen extends JPanel {
 
+    private JComboBox<StayItem> stayDropdown;
+    private JLabel stayIdLabel;
+    private JLabel roomTypeLabel;
+    private JButton assignRoomButton;
+
     public CheckInScreen(CardLayout cardLayout, JPanel cardPanel, JFrame mainFrame) {
         setLayout(new BorderLayout());
         setBackground(new Color(255, 255, 204));
@@ -13,12 +18,12 @@ class CheckInScreen extends JPanel {
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         add(titleLabel, BorderLayout.NORTH);
 
-        JComboBox<StayItem> stayDropdown = new JComboBox<>();
-        JLabel stayIdLabel = new JLabel("Stay ID: ");
-        JLabel roomTypeLabel = new JLabel("Room Type: ");
+        stayDropdown = new JComboBox<>();
+        stayIdLabel = new JLabel("Stay ID: ");
+        roomTypeLabel = new JLabel("Room Type: ");
         JTextField roomNumberField = new JTextField();
 
-        JButton assignRoomButton = new JButton("Assign Room");
+        assignRoomButton = new JButton("Assign Room");
         assignRoomButton.setEnabled(false);
 
         // Load stays with no room assigned (i.e., waiting for check-in)
@@ -123,6 +128,39 @@ class CheckInScreen extends JPanel {
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(returnButton);
         add(buttonPanel, BorderLayout.SOUTH);
+    }
+
+    public void refreshStayDropdown() {
+        stayDropdown.removeAllItems();
+        assignRoomButton.setEnabled(false);
+        stayIdLabel.setText("Stay ID: ");
+        roomTypeLabel.setText("Room Type: ");
+
+        try (Connection conn = DBUtil.getConnection()) {
+            String sql = "SELECT s.stay_id, g.first_name, g.last_name, rt.room_type " +
+                    "FROM hbs.stay s " +
+                    "JOIN hbs.guest g ON s.guest_id = g.guest_id " +
+                    "JOIN hbs.room_type rt ON s.room_type_id = rt.room_id " +
+                    "WHERE s.room_number IS NULL " +
+                    "ORDER BY g.last_name, g.first_name";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+            boolean hasItems = false;
+            while (rs.next()) {
+                stayDropdown.addItem(new StayItem(
+                        rs.getInt("stay_id"),
+                        rs.getString("first_name") + " " + rs.getString("last_name"),
+                        rs.getString("room_type")
+                ));
+                hasItems = true;
+            }
+            if (!hasItems) {
+                JOptionPane.showMessageDialog(this, "No pending reservations found.");
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error loading stays: " + ex.getMessage());
+        }
     }
 }
 

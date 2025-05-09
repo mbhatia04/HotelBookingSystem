@@ -5,6 +5,9 @@ public class MainMenu extends JFrame {
 
     private CardLayout cardLayout;
     private JPanel cardPanel;
+    private ViewReservationsScreen viewReservationsPanel;
+    private CreateReservation createReservationPanel;
+    private CheckInScreen checkInPanel;
 
     public MainMenu() {
         setTitle("MSB Hotel - Main Menu");
@@ -17,13 +20,15 @@ public class MainMenu extends JFrame {
 
         JPanel mainMenuPanel = createMainMenuPanel();
         JPanel reservationPanel = createReservationPanel();
-        JPanel createReservationPanel = new CreateReservation(cardLayout, cardPanel, this);
+        createReservationPanel = new CreateReservation(cardLayout, cardPanel, this);
+        viewReservationsPanel = new ViewReservationsScreen(cardLayout, cardPanel, this);
         JPanel guestProfilePanel = new GuestProfileScreen(cardLayout, cardPanel, this);
-        JPanel checkInPanel = new CheckInScreen(cardLayout, cardPanel, this);
+        checkInPanel = new CheckInScreen(cardLayout, cardPanel, this);
 
         cardPanel.add(mainMenuPanel, "MainMenu");
         cardPanel.add(reservationPanel, "ReservationMenu");
         cardPanel.add(createReservationPanel, "CreateReservation");
+        cardPanel.add(viewReservationsPanel, "ViewReservations");
         cardPanel.add(guestProfilePanel, "GuestProfile");
         cardPanel.add(checkInPanel, "CheckInScreen");
 
@@ -50,6 +55,7 @@ public class MainMenu extends JFrame {
         checkInButton.setBorderPainted(false);
         checkInButton.addActionListener(e -> {
             this.setSize(500, 400);
+            checkInPanel.refreshStayDropdown();
             cardLayout.show(cardPanel, "CheckInScreen");
         });
         buttonPanel.add(checkInButton);
@@ -110,6 +116,7 @@ public class MainMenu extends JFrame {
         createReservationButton.setBorderPainted(false);
         createReservationButton.addActionListener(e -> {
             this.setSize(800, 600);
+            createReservationPanel.refreshGuestDropdown();
             cardLayout.show(cardPanel, "CreateReservation");
         });
         buttonPanel.add(createReservationButton);
@@ -119,6 +126,11 @@ public class MainMenu extends JFrame {
         viewReservationButton.setOpaque(true);
         viewReservationButton.setBorderPainted(false);
         buttonPanel.add(viewReservationButton);
+        viewReservationButton.addActionListener(e -> {
+            this.setSize(800, 600);
+            ((ViewReservationsScreen) viewReservationsPanel).refreshTable();
+            cardLayout.show(cardPanel, "ViewReservations");
+        });
 
         JButton createGuestButton = new JButton("Create Guest Profile");
         createGuestButton.setBackground(new Color(255, 204, 153));

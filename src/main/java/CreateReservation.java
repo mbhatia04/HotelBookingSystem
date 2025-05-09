@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 
 class CreateReservation extends JPanel {
 
+    private JComboBox<GuestItem> guestDropdown;
+
     public CreateReservation(CardLayout cardLayout, JPanel cardPanel, JFrame mainFrame) {
         setLayout(new BorderLayout());
         setBackground(new Color(255, 255, 204));
@@ -19,7 +21,7 @@ class CreateReservation extends JPanel {
         formPanel.setOpaque(false);
 
         // Guest dropdown and fields
-        JComboBox<GuestItem> guestDropdown = new JComboBox<>();
+        guestDropdown = new JComboBox<>();
         JTextField firstNameField = new JTextField();
         JTextField lastNameField = new JTextField();
         JTextField emailField = new JTextField();
@@ -137,7 +139,7 @@ class CreateReservation extends JPanel {
                 stmt.setInt(1, selectedGuest.id);
                 stmt.setDate(2, java.sql.Date.valueOf(checkInField.getText()));
                 stmt.setDate(3, java.sql.Date.valueOf(checkOutField.getText()));
-                stmt.setString(4, "");
+                stmt.setNull(4, java.sql.Types.VARCHAR);
                 stmt.setInt(5, Integer.parseInt(numGuestsField.getText()));
                 stmt.setString(6, specialRequestsField.getText());
                 stmt.setInt(7, selectedRoomType.id);  // ← THIS LINE inserts the room_type_id!
@@ -167,6 +169,27 @@ class CreateReservation extends JPanel {
         formPanel.add(stayPanel);
         add(formPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
+    }
+
+    public void refreshGuestDropdown() {
+        guestDropdown.removeAllItems();
+        try (Connection conn = DBUtil.getConnection()) {
+            String sql = "SELECT guest_id, first_name, last_name, email, phone FROM hbs.guest ORDER BY last_name, first_name";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                guestDropdown.addItem(new GuestItem(
+                        rs.getInt("guest_id"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getString("email"),
+                        rs.getString("phone")
+                ));
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error loading guests: " + ex.getMessage());
+        }
     }
 }
 
