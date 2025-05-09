@@ -58,6 +58,26 @@ class CreateReservation extends JPanel {
             }
         });
 
+        // Room type dropdown
+        JComboBox<RoomTypeItem> roomTypeDropdown = new JComboBox<>();
+
+        try (Connection conn = DBUtil.getConnection()) {
+            String sql = "SELECT room_id, room_type, room_desc FROM hbs.room_type ORDER BY room_type";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                roomTypeDropdown.addItem(new RoomTypeItem(
+                        rs.getInt("room_id"),
+                        rs.getString("room_type"),
+                        rs.getString("room_desc")
+                ));
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error loading room types: " + ex.getMessage());
+        }
+
+
         JPanel guestPanel = new JPanel(new GridLayout(5, 2));
         guestPanel.setBorder(BorderFactory.createTitledBorder("Guest Information"));
         guestPanel.add(new JLabel("Select Guest:"));
@@ -75,7 +95,7 @@ class CreateReservation extends JPanel {
         JTextField checkInField = new JTextField("YYYY-MM-DD");
         JTextField checkOutField = new JTextField("YYYY-MM-DD");
         JTextField numGuestsField = new JTextField("2");
-        JTextField roomNumberField = new JTextField("101");
+        // JTextField roomNumberField = new JTextField("101");
         JTextField specialRequestsField = new JTextField("None");
 
         JPanel stayPanel = new JPanel(new GridLayout(6, 2));
@@ -86,31 +106,41 @@ class CreateReservation extends JPanel {
         stayPanel.add(checkOutField);
         stayPanel.add(new JLabel("Number of Guests:"));
         stayPanel.add(numGuestsField);
-        stayPanel.add(new JLabel("Room Number:"));
-        stayPanel.add(roomNumberField);
+        stayPanel.add(new JLabel("Room Type:"));
+        stayPanel.add(roomTypeDropdown);
+        // stayPanel.add(new JLabel("Room Number:"));
+        // stayPanel.add(roomNumberField);
         stayPanel.add(new JLabel("Special Requests:"));
         stayPanel.add(specialRequestsField);
+
 
         JButton saveButton = new JButton("Save Reservation");
         JButton returnButton = new JButton("Return");
 
         saveButton.addActionListener(e -> {
             GuestItem selectedGuest = (GuestItem) guestDropdown.getSelectedItem();
+            RoomTypeItem selectedRoomType = (RoomTypeItem) roomTypeDropdown.getSelectedItem();
+
             if (selectedGuest == null) {
                 JOptionPane.showMessageDialog(this, "Please select a guest.");
                 return;
             }
+            if (selectedRoomType == null) {
+                JOptionPane.showMessageDialog(this, "Please select a room type.");
+                return;
+            }
 
             try (Connection conn = DBUtil.getConnection()) {
-                String sql = "INSERT INTO hbs.stay (guest_id, check_in_date, check_out_date, room_number, number_of_guests, special_requests) " +
-                        "VALUES (?, ?, ?, ?, ?, ?)";
+                String sql = "INSERT INTO hbs.stay (guest_id, check_in_date, check_out_date, room_number,number_of_guests, special_requests, room_type_id) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?)";
                 PreparedStatement stmt = conn.prepareStatement(sql);
                 stmt.setInt(1, selectedGuest.id);
                 stmt.setDate(2, java.sql.Date.valueOf(checkInField.getText()));
                 stmt.setDate(3, java.sql.Date.valueOf(checkOutField.getText()));
-                stmt.setString(4, roomNumberField.getText());
+                stmt.setString(4, "");
                 stmt.setInt(5, Integer.parseInt(numGuestsField.getText()));
                 stmt.setString(6, specialRequestsField.getText());
+                stmt.setInt(7, selectedRoomType.id);  // ← THIS LINE inserts the room_type_id!
 
                 int rows = stmt.executeUpdate();
                 if (rows > 0) {
@@ -159,5 +189,22 @@ class GuestItem {
     @Override
     public String toString() {
         return firstName + " " + lastName;
+    }
+}
+
+class RoomTypeItem {
+    int id;
+    String type;
+    String description;
+
+    public RoomTypeItem(int id, String type, String description) {
+        this.id = id;
+        this.type = type;
+        this.description = description;
+    }
+
+    @Override
+    public String toString() {
+        return type;
     }
 }
