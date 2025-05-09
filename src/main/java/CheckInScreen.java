@@ -1,0 +1,144 @@
+import javax.swing.*;
+import java.awt.*;
+import java.sql.*;
+
+class CheckInScreen extends JPanel {
+
+    public CheckInScreen(CardLayout cardLayout, JPanel cardPanel, JFrame mainFrame) {
+        setLayout(new BorderLayout());
+        setBackground(new Color(255, 255, 204));
+
+        JLabel titleLabel = new JLabel("Check-In Guest", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Serif", Font.BOLD, 24));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
+        add(titleLabel, BorderLayout.NORTH);
+
+        JComboBox<StayItem> stayDropdown = new JComboBox<>();
+        JLabel stayIdLabel = new JLabel("Stay ID: ");
+        JLabel roomTypeLabel = new JLabel("Room Type: ");
+        JTextField roomNumberField = new JTextField();
+
+        JButton assignRoomButton = new JButton("Assign Room");
+        assignRoomButton.setEnabled(false);
+
+        // Load stays with no room assigned (i.e., waiting for check-in)
+        try (Connection conn = DBUtil.getConnection()) {
+            String sql = "SELECT s.stay_id, g.first_name, g.last_name, rt.room_type " +
+                    "FROM hbs.stay s " +
+                    "JOIN hbs.guest g ON s.guest_id = g.guest_id " +
+                    "JOIN hbs.room_type rt ON s.room_type_id = rt.room_id " +
+                    "WHERE s.room_number IS NULL " +
+                    "ORDER BY g.last_name, g.first_name";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                stayDropdown.addItem(new StayItem(
+                        rs.getInt("stay_id"),
+                        rs.getString("first_name") + " " + rs.getString("last_name"),
+                        rs.getString("room_type")
+                ));
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error loading stays: " + ex.getMessage());
+        }
+
+        stayDropdown.addActionListener(e -> {
+            StayItem selected = (StayItem) stayDropdown.getSelectedItem();
+            if (selected != null) {
+                stayIdLabel.setText("Stay ID: " + selected.stayId);
+                roomTypeLabel.setText("Room Type: " + selected.roomType);
+                assignRoomButton.setEnabled(true);
+            }
+        });
+
+        JPanel formPanel = new JPanel(new GridLayout(5, 2, 5, 5));
+        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
+        formPanel.setOpaque(false);
+
+        formPanel.add(new JLabel("Select Reservation:"));
+        formPanel.add(stayDropdown);
+        formPanel.add(stayIdLabel);
+        formPanel.add(new JLabel(""));
+        formPanel.add(roomTypeLabel);
+        formPanel.add(new JLabel(""));
+        formPanel.add(new JLabel("Assign Room Number:"));
+        formPanel.add(roomNumberField);
+        formPanel.add(new JLabel(""));
+        formPanel.add(assignRoomButton);
+
+        add(formPanel, BorderLayout.CENTER);
+
+        assignRoomButton.addActionListener(e -> {
+            StayItem selected = (StayItem) stayDropdown.getSelectedItem();
+            if (selected == null) {
+                JOptionPane.showMessageDialog(this, "Please select a reservation.");
+                return;
+            }
+            String roomNumber = roomNumberField.getText().trim();
+            if (roomNumber.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter a room number.");
+                return;
+            }
+
+            try (Connection conn = DBUtil.getConnection()) {
+                // Check if room is already occupied
+                String checkSql = "SELECT COUNT(*) FROM hbs.stay WHERE room_number = ?";
+                PreparedStatement checkStmt = conn.prepareStatement(checkSql);
+                checkStmt.setString(1, roomNumber);
+                ResultSet checkRs = checkStmt.executeQuery();
+                if (checkRs.next() && checkRs.getInt(1) > 0) {
+                    JOptionPane.showMessageDialog(this, "This room is already occupied!");
+                    return;
+                }
+
+                // Assign room
+                String updateSql = "UPDATE hbs.stay SET room_number = ? WHERE stay_id = ?";
+                PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+                updateStmt.setString(1, roomNumber);
+                updateStmt.setInt(2, selected.stayId);
+                int rows = updateStmt.executeUpdate();
+                if (rows > 0) {
+                    JOptionPane.showMessageDialog(this, "Room assigned successfully!");
+                    assignRoomButton.setEnabled(false);
+                    roomNumberField.setText("");
+                    stayIdLabel.setText("Stay ID: ");
+                    roomTypeLabel.setText("Room Type: ");
+                    stayDropdown.removeItem(selected);  // remove from dropdown
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to assign room.");
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error updating stay: " + ex.getMessage());
+            }
+        });
+
+        JButton returnButton = new JButton("Return");
+        returnButton.addActionListener(e -> {
+            mainFrame.setSize(500, 400);
+            cardLayout.show(cardPanel, "MainMenu");
+        });
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(returnButton);
+        add(buttonPanel, BorderLayout.SOUTH);
+    }
+}
+
+class StayItem {
+    int stayId;
+    String guestName;
+    String roomType;
+
+    public StayItem(int stayId, String guestName, String roomType) {
+        this.stayId = stayId;
+        this.guestName = guestName;
+        this.roomType = roomType;
+    }
+
+    @Override
+    public String toString() {
+        return guestName + " (Stay ID: " + stayId + ")";
+    }
+}

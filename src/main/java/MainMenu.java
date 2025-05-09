@@ -19,11 +19,13 @@ public class MainMenu extends JFrame {
         JPanel reservationPanel = createReservationPanel();
         JPanel createReservationPanel = new CreateReservation(cardLayout, cardPanel, this);
         JPanel guestProfilePanel = new GuestProfileScreen(cardLayout, cardPanel, this);
+        JPanel checkInPanel = new CheckInScreen(cardLayout, cardPanel, this);
 
         cardPanel.add(mainMenuPanel, "MainMenu");
         cardPanel.add(reservationPanel, "ReservationMenu");
         cardPanel.add(createReservationPanel, "CreateReservation");
         cardPanel.add(guestProfilePanel, "GuestProfile");
+        cardPanel.add(checkInPanel, "CheckInScreen");
 
         add(cardPanel);
         setVisible(true);
@@ -46,6 +48,10 @@ public class MainMenu extends JFrame {
         checkInButton.setBackground(new Color(204, 153, 255));
         checkInButton.setOpaque(true);
         checkInButton.setBorderPainted(false);
+        checkInButton.addActionListener(e -> {
+            this.setSize(500, 400);
+            cardLayout.show(cardPanel, "CheckInScreen");
+        });
         buttonPanel.add(checkInButton);
 
         JButton checkOutButton = new JButton("Check Out");
