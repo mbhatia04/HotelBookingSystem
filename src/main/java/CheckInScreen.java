@@ -4,7 +4,7 @@ import java.sql.*;
 
 class CheckInScreen extends JPanel {
 
-    private JComboBox<StayItem> stayDropdown;
+    private JComboBox<CheckInStayItem> stayDropdown;
     private JLabel stayIdLabel;
     private JLabel roomTypeLabel;
     private JButton assignRoomButton;
@@ -37,7 +37,7 @@ class CheckInScreen extends JPanel {
             PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                stayDropdown.addItem(new StayItem(
+                stayDropdown.addItem(new CheckInStayItem(
                         rs.getInt("stay_id"),
                         rs.getString("first_name") + " " + rs.getString("last_name"),
                         rs.getString("room_type")
@@ -49,7 +49,7 @@ class CheckInScreen extends JPanel {
         }
 
         stayDropdown.addActionListener(e -> {
-            StayItem selected = (StayItem) stayDropdown.getSelectedItem();
+            CheckInStayItem selected = (CheckInStayItem) stayDropdown.getSelectedItem();
             if (selected != null) {
                 stayIdLabel.setText("Stay ID: " + selected.stayId);
                 roomTypeLabel.setText("Room Type: " + selected.roomType);
@@ -75,7 +75,7 @@ class CheckInScreen extends JPanel {
         add(formPanel, BorderLayout.CENTER);
 
         assignRoomButton.addActionListener(e -> {
-            StayItem selected = (StayItem) stayDropdown.getSelectedItem();
+            CheckInStayItem selected = (CheckInStayItem) stayDropdown.getSelectedItem();
             if (selected == null) {
                 JOptionPane.showMessageDialog(this, "Please select a reservation.");
                 return;
@@ -147,7 +147,7 @@ class CheckInScreen extends JPanel {
             ResultSet rs = stmt.executeQuery();
             boolean hasItems = false;
             while (rs.next()) {
-                stayDropdown.addItem(new StayItem(
+                stayDropdown.addItem(new CheckInStayItem(
                         rs.getInt("stay_id"),
                         rs.getString("first_name") + " " + rs.getString("last_name"),
                         rs.getString("room_type")
@@ -164,12 +164,12 @@ class CheckInScreen extends JPanel {
     }
 }
 
-class StayItem {
+class CheckInStayItem {
     int stayId;
     String guestName;
     String roomType;
 
-    public StayItem(int stayId, String guestName, String roomType) {
+    public CheckInStayItem(int stayId, String guestName, String roomType) {
         this.stayId = stayId;
         this.guestName = guestName;
         this.roomType = roomType;

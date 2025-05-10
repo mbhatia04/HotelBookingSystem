@@ -62,22 +62,31 @@ class CreateReservation extends JPanel {
 
         // Room type dropdown
         JComboBox<RoomTypeItem> roomTypeDropdown = new JComboBox<>();
+        JLabel roomRateLabel = new JLabel("Rate: $100.00");
 
         try (Connection conn = DBUtil.getConnection()) {
-            String sql = "SELECT room_id, room_type, room_desc FROM hbs.room_type ORDER BY room_type";
+            String sql = "SELECT room_id, room_type, room_desc, room_rate FROM hbs.room_type ORDER BY room_type";
             PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 roomTypeDropdown.addItem(new RoomTypeItem(
                         rs.getInt("room_id"),
                         rs.getString("room_type"),
-                        rs.getString("room_desc")
+                        rs.getString("room_desc"),
+                        rs.getDouble("room_rate")
                 ));
             }
         } catch (Exception ex) {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(this, "Error loading room types: " + ex.getMessage());
         }
+
+        roomTypeDropdown.addActionListener(e -> {
+            RoomTypeItem selected = (RoomTypeItem) roomTypeDropdown.getSelectedItem();
+            if (selected != null) {
+                roomRateLabel.setText(String.format("Rate: $%.2f", selected.rate));
+            }
+        });
 
 
         JPanel guestPanel = new JPanel(new GridLayout(5, 2));
@@ -110,8 +119,8 @@ class CreateReservation extends JPanel {
         stayPanel.add(numGuestsField);
         stayPanel.add(new JLabel("Room Type:"));
         stayPanel.add(roomTypeDropdown);
-        // stayPanel.add(new JLabel("Room Number:"));
-        // stayPanel.add(roomNumberField);
+        stayPanel.add(new JLabel("Room Rate:"));
+        stayPanel.add(roomRateLabel);
         stayPanel.add(new JLabel("Special Requests:"));
         stayPanel.add(specialRequestsField);
 
@@ -132,24 +141,47 @@ class CreateReservation extends JPanel {
                 return;
             }
 
-            try (Connection conn = DBUtil.getConnection()) {
-                String sql = "INSERT INTO hbs.stay (guest_id, check_in_date, check_out_date, room_number,number_of_guests, special_requests, room_type_id) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?)";
-                PreparedStatement stmt = conn.prepareStatement(sql);
-                stmt.setInt(1, selectedGuest.id);
-                stmt.setDate(2, java.sql.Date.valueOf(checkInField.getText()));
-                stmt.setDate(3, java.sql.Date.valueOf(checkOutField.getText()));
-                stmt.setNull(4, java.sql.Types.VARCHAR);
-                stmt.setInt(5, Integer.parseInt(numGuestsField.getText()));
-                stmt.setString(6, specialRequestsField.getText());
-                stmt.setInt(7, selectedRoomType.id);  // ← THIS LINE inserts the room_type_id!
+            try {
+                // Parse and validate dates
+                java.sql.Date checkInDate = java.sql.Date.valueOf(checkInField.getText().trim());
+                java.sql.Date checkOutDate = java.sql.Date.valueOf(checkOutField.getText().trim());
+                java.sql.Date today = java.sql.Date.valueOf(java.time.LocalDate.now());
 
-                int rows = stmt.executeUpdate();
-                if (rows > 0) {
-                    JOptionPane.showMessageDialog(this, "Reservation saved successfully!");
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed to save reservation.");
+                // Validation 1: check-in >= today
+                if (checkInDate.before(today)) {
+                    JOptionPane.showMessageDialog(this, "Check-in date must be today or later.");
+                    return;
                 }
+
+                // Validation 2: check-out > check-in
+                if (!checkOutDate.after(checkInDate)) {
+                    JOptionPane.showMessageDialog(this, "Check-out date must be after check-in date.");
+                    return;
+                }
+
+                // Proceed with insert
+                try (Connection conn = DBUtil.getConnection()) {
+                    String sql = "INSERT INTO hbs.stay (guest_id, check_in_date, check_out_date, room_number, number_of_guests, special_requests, room_type_id) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    PreparedStatement stmt = conn.prepareStatement(sql);
+                    stmt.setInt(1, selectedGuest.id);
+                    stmt.setDate(2, checkInDate);
+                    stmt.setDate(3, checkOutDate);
+                    stmt.setNull(4, java.sql.Types.VARCHAR); // no room number at reservation
+                    stmt.setInt(5, Integer.parseInt(numGuestsField.getText()));
+                    stmt.setString(6, specialRequestsField.getText());
+                    stmt.setInt(7, selectedRoomType.id);
+
+                    int rows = stmt.executeUpdate();
+                    if (rows > 0) {
+                        JOptionPane.showMessageDialog(this, "Reservation saved successfully!");
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Failed to save reservation.");
+                    }
+                }
+
+            } catch (IllegalArgumentException dateEx) {
+                JOptionPane.showMessageDialog(this, "Invalid date format. Use YYYY-MM-DD.");
             } catch (Exception ex) {
                 ex.printStackTrace();
                 JOptionPane.showMessageDialog(this, "Error saving reservation: " + ex.getMessage());
@@ -219,11 +251,13 @@ class RoomTypeItem {
     int id;
     String type;
     String description;
+    double rate;
 
-    public RoomTypeItem(int id, String type, String description) {
+    public RoomTypeItem(int id, String type, String description, double rate) {
         this.id = id;
         this.type = type;
         this.description = description;
+        this.rate = rate;
     }
 
     @Override
