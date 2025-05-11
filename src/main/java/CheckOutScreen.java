@@ -18,49 +18,79 @@ public class CheckOutScreen extends JPanel {
 
     public CheckOutScreen(CardLayout layout, JPanel cardPanel, JFrame mainFrame) {
         setLayout(new BorderLayout());
-        setBackground(new Color(255, 255, 204));
+        setBackground(new Color(255, 204, 236));
 
         JLabel title = new JLabel("Check-Out", SwingConstants.CENTER);
-        title.setFont(new Font("Serif", Font.BOLD, 24));
+        title.setFont(FontUtil.loadLobsterFont(50f));
         title.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         add(title, BorderLayout.NORTH);
 
-        JPanel topPanel = new JPanel(new GridLayout(5, 2, 10, 5));
-        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        JPanel topPanel = new JPanel(new GridLayout(5, 2, 10, 10));
+        topPanel.setOpaque(false);
+        topPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.decode("#FA74C4")),
+                "Stay Summary", 0, 0, new Font("Serif", Font.BOLD, 16)));
+        Font labelFont = new Font("Serif", Font.BOLD, 16);
+        Font valueFont = new Font("Serif", Font.PLAIN, 16);
 
         stayDropdown = new JComboBox<>();
+        stayDropdown.setFont(valueFont);
         loadStayDropdown();
-
         stayDropdown.addActionListener(e -> loadStayDetails());
 
-        topPanel.add(new JLabel("Select Stay:"));
-        topPanel.add(stayDropdown);
-        topPanel.add(new JLabel("Guest:"));
-        topPanel.add(guestNameLabel);
-        topPanel.add(new JLabel("Room:"));
-        topPanel.add(roomLabel);
-        topPanel.add(new JLabel("Stay Duration:"));
-        topPanel.add(durationLabel);
-        topPanel.add(new JLabel("Total Charges:"));
-        topPanel.add(totalLabel);
+        JLabel stayLabel = new JLabel("Select Stay:");
+        stayLabel.setFont(labelFont);
+        JLabel guestLabel = new JLabel("Guest:");
+        guestLabel.setFont(labelFont);
+        JLabel roomTypeLabel = new JLabel("Room:");
+        roomTypeLabel.setFont(labelFont);
+        JLabel durationText = new JLabel("Stay Duration:");
+        durationText.setFont(labelFont);
+        JLabel totalText = new JLabel("Total Charges:");
+        totalText.setFont(labelFont);
 
-        add(topPanel, BorderLayout.NORTH);
+        guestNameLabel.setFont(valueFont);
+        roomLabel.setFont(valueFont);
+        durationLabel.setFont(valueFont);
+        totalLabel.setFont(valueFont);
 
-        // Table for charges
+        topPanel.add(stayLabel);      topPanel.add(stayDropdown);
+        topPanel.add(guestLabel);     topPanel.add(guestNameLabel);
+        topPanel.add(roomTypeLabel);  topPanel.add(roomLabel);
+        topPanel.add(durationText);   topPanel.add(durationLabel);
+        topPanel.add(totalText);      topPanel.add(totalLabel);
+
+        JPanel paddedTop = new JPanel(new BorderLayout());
+        paddedTop.setOpaque(false);
+        paddedTop.setBorder(BorderFactory.createEmptyBorder(20, 100, 20, 100));
+        paddedTop.add(topPanel, BorderLayout.CENTER);
+        add(paddedTop, BorderLayout.NORTH);
+
         String[] columns = {"Date", "Type", "Amount"};
         tableModel = new DefaultTableModel(columns, 0);
         chargeTable = new JTable(tableModel);
+        chargeTable.setFont(valueFont);
+        chargeTable.setRowHeight(24);
+        chargeTable.getTableHeader().setFont(new Font("Serif", Font.BOLD, 16));
         add(new JScrollPane(chargeTable), BorderLayout.CENTER);
 
-        JPanel buttonPanel = new JPanel();
         JButton printButton = new JButton("Check Out & Print Receipt");
         JButton returnButton = new JButton("Return");
+        printButton.setFont(labelFont);
+        returnButton.setFont(labelFont);
+        printButton.setPreferredSize(new Dimension(240, 45));
+        returnButton.setPreferredSize(new Dimension(160, 45));
+        printButton.setBackground(new Color(250, 116, 196));
+        returnButton.setBackground(new Color(250, 116, 196));
+        printButton.setOpaque(true);
+        returnButton.setOpaque(true);
+        printButton.setBorderPainted(false);
+        returnButton.setBorderPainted(false);
 
         printButton.addActionListener(e -> {
             CheckOutStayItem selected = (CheckOutStayItem) stayDropdown.getSelectedItem();
             if (selected == null) return;
 
-            // Update stay table
             try (Connection conn = DBUtil.getConnection()) {
                 String updateSql = "UPDATE hbs.stay SET checked_out_yn = 'Y', actual_check_out_date = CURRENT_DATE WHERE stay_id = ?";
                 PreparedStatement stmt = conn.prepareStatement(updateSql);
@@ -72,23 +102,27 @@ public class CheckOutScreen extends JPanel {
                 return;
             }
 
-            new File("./receipts").mkdirs();
-            // ReceiptGenerator.generateReceipt(selected.stayId, "./receipts");
+            new File("./HotelBookingSystem/receipts").mkdirs();
+            ReceiptGenerator.generateReceipt(selected.stayId, "./HotelBookingSystem/receipts");
             JOptionPane.showMessageDialog(this, "Receipt saved and guest checked out!");
-            loadStayDropdown();  // Refresh dropdown
+            loadStayDropdown();
         });
 
         returnButton.addActionListener(e -> {
-            mainFrame.setSize(500, 400);
+            mainFrame.setSize(800, 640);
             layout.show(cardPanel, "MainMenu");
         });
 
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setBackground(new Color(255, 204, 236));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         buttonPanel.add(printButton);
+        buttonPanel.add(Box.createHorizontalStrut(20));
         buttonPanel.add(returnButton);
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    private void loadStayDropdown() {
+    void loadStayDropdown() {
         stayDropdown.removeAllItems();
         try (Connection conn = DBUtil.getConnection()) {
             String sql = """
@@ -128,7 +162,7 @@ public class CheckOutScreen extends JPanel {
         long days = ChronoUnit.DAYS.between(selected.checkIn, selected.checkOut);
         durationLabel.setText(days + " nights");
 
-        tableModel.setRowCount(0); // Clear table
+        tableModel.setRowCount(0);
         double total = 0.0;
 
         try (Connection conn = DBUtil.getConnection()) {

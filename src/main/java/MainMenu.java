@@ -9,10 +9,12 @@ public class MainMenu extends JFrame {
     private ViewReservationsScreen viewReservationsPanel;
     private CreateReservation createReservationPanel;
     private CheckInScreen checkInPanel;
+    private CheckOutScreen checkOutPanel;
+    private CreateChargesScreen createChargesPanel;
 
     public MainMenu() {
         setTitle("MSB Hotel - Main Menu");
-        setSize(500, 400);
+        setSize(800, 640);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null); // Center on screen
 
@@ -25,8 +27,8 @@ public class MainMenu extends JFrame {
         viewReservationsPanel = new ViewReservationsScreen(cardLayout, cardPanel, this);
         JPanel guestProfilePanel = new GuestProfileScreen(cardLayout, cardPanel, this);
         checkInPanel = new CheckInScreen(cardLayout, cardPanel, this);
-        JPanel checkOutPanel = new CheckOutScreen(cardLayout, cardPanel, this);
-        JPanel createChargesPanel = new CreateChargesScreen(cardLayout, cardPanel, this);
+        checkOutPanel = new CheckOutScreen(cardLayout, cardPanel, this);
+        createChargesPanel = new CreateChargesScreen(cardLayout, cardPanel, this);
 
         cardPanel.add(mainMenuPanel, "MainMenu");
         cardPanel.add(reservationPanel, "ReservationMenu");
@@ -43,10 +45,10 @@ public class MainMenu extends JFrame {
 
     private JPanel createMainMenuPanel() {
         JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBackground(new Color(255, 255, 204));
+        mainPanel.setBackground(new Color(255, 204, 236));
 
         JLabel titleLabel = new JLabel("MSB Hotel", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Serif", Font.BOLD, 28));
+        titleLabel.setFont(FontUtil.loadLobsterFont(75f));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         mainPanel.add(titleLabel, BorderLayout.NORTH);
 
@@ -56,20 +58,20 @@ public class MainMenu extends JFrame {
         buttonPanel.setOpaque(false);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 100, 10, 100));
 
-        int verticalGap = 12;
+        int verticalGap = 30;
 
-        // Helper to configure each button
         Consumer<JButton> styleButton = button -> {
             button.setAlignmentX(Component.CENTER_ALIGNMENT);
-            button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
             button.setOpaque(true);
             button.setBorderPainted(false);
+            button.setFont(new Font("Serif", Font.BOLD, 18));
         };
 
         JButton checkInButton = new JButton("Check In");
-        checkInButton.setBackground(new Color(204, 153, 255));
+        checkInButton.setBackground(new Color(255, 230, 245));
         checkInButton.addActionListener(e -> {
-            this.setSize(500, 400);
+            this.setSize(575, 460);
             checkInPanel.refreshStayDropdown();
             cardLayout.show(cardPanel, "CheckInScreen");
         });
@@ -78,11 +80,12 @@ public class MainMenu extends JFrame {
         buttonPanel.add(Box.createVerticalStrut(verticalGap));
 
         JButton checkOutButton = new JButton("Check Out");
-        checkOutButton.setBackground(new Color(255, 153, 204));
+        checkOutButton.setBackground(new Color(255, 230, 245));
         checkOutButton.setOpaque(true);
         checkOutButton.setBorderPainted(false);
         checkOutButton.addActionListener(e -> {
-            this.setSize(800, 600);
+            this.setSize(800, 640);
+            ((CheckOutScreen) checkOutPanel).loadStayDropdown();
             cardLayout.show(cardPanel, "CheckOutScreen");
         });
         styleButton.accept(checkOutButton);
@@ -90,10 +93,10 @@ public class MainMenu extends JFrame {
         buttonPanel.add(checkOutButton);
         buttonPanel.add(Box.createVerticalStrut(verticalGap));
 
-        JButton reservationButton = new JButton("Reservation");
-        reservationButton.setBackground(new Color(255, 204, 0));
+        JButton reservationButton = new JButton("Handle Reservations");
+        reservationButton.setBackground(new Color(255, 230, 245));
         reservationButton.addActionListener(e -> {
-            this.setSize(500, 400);
+            this.setSize(800, 530);
             cardLayout.show(cardPanel, "ReservationMenu");
         });
         styleButton.accept(reservationButton);
@@ -101,9 +104,10 @@ public class MainMenu extends JFrame {
         buttonPanel.add(Box.createVerticalStrut(verticalGap));
 
         JButton createChargesButton = new JButton("Create Charges");
-        createChargesButton.setBackground(new Color(153, 204, 255));
+        createChargesButton.setBackground(new Color(255, 230, 245));
         createChargesButton.addActionListener(e -> {
-            this.setSize(800, 500);
+            this.setSize(800, 640);
+            ((CreateChargesScreen) createChargesPanel).reloadGuestList();
             cardLayout.show(cardPanel, "CreateCharges");
         });
         styleButton.accept(createChargesButton);
@@ -111,7 +115,7 @@ public class MainMenu extends JFrame {
         buttonPanel.add(Box.createVerticalStrut(verticalGap));
 
         JButton exitButton = new JButton("Exit");
-        exitButton.setBackground(Color.LIGHT_GRAY);
+        exitButton.setBackground(new Color(250, 116, 196));
         exitButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(
                     this,
@@ -132,57 +136,68 @@ public class MainMenu extends JFrame {
 
     private JPanel createReservationPanel() {
         JPanel reservationPanel = new JPanel(new BorderLayout());
-        reservationPanel.setBackground(new Color(255, 255, 204));
+        reservationPanel.setBackground(new Color(255, 204, 236));
 
         JLabel titleLabel = new JLabel("Reservation Menu", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Serif", Font.BOLD, 24));
+        titleLabel.setFont(FontUtil.loadLobsterFont(50f));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         reservationPanel.add(titleLabel, BorderLayout.NORTH);
 
-        JPanel buttonPanel = new JPanel(new GridLayout(4, 1, 10, 10));
+        // Match main menu layout and spacing
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
         buttonPanel.setOpaque(false);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 50, 10, 50));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 100, 10, 100));
+
+        int verticalGap = 30;
+
+        Consumer<JButton> styleButton = button -> {
+            button.setAlignmentX(Component.CENTER_ALIGNMENT);
+            button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+            button.setOpaque(true);
+            button.setBorderPainted(false);
+            button.setFont(new Font("Serif", Font.BOLD, 18));
+        };
 
         JButton createReservationButton = new JButton("Create Reservation");
-        createReservationButton.setBackground(new Color(204, 255, 204));
-        createReservationButton.setOpaque(true);
-        createReservationButton.setBorderPainted(false);
+        createReservationButton.setBackground(new Color(255, 230, 245));
         createReservationButton.addActionListener(e -> {
-            this.setSize(800, 600);
+            this.setSize(800, 700);
             createReservationPanel.refreshGuestDropdown();
             cardLayout.show(cardPanel, "CreateReservation");
         });
+        styleButton.accept(createReservationButton);
         buttonPanel.add(createReservationButton);
+        buttonPanel.add(Box.createVerticalStrut(verticalGap));
 
         JButton viewReservationButton = new JButton("View Reservation");
-        viewReservationButton.setBackground(new Color(204, 255, 255));
-        viewReservationButton.setOpaque(true);
-        viewReservationButton.setBorderPainted(false);
-        buttonPanel.add(viewReservationButton);
+        viewReservationButton.setBackground(new Color(255, 230, 245));
         viewReservationButton.addActionListener(e -> {
-            this.setSize(800, 600);
-            ((ViewReservationsScreen) viewReservationsPanel).refreshTable();
+            this.setSize(900, 600);
+            viewReservationsPanel.refreshTable();
             cardLayout.show(cardPanel, "ViewReservations");
         });
+        styleButton.accept(viewReservationButton);
+        buttonPanel.add(viewReservationButton);
+        buttonPanel.add(Box.createVerticalStrut(verticalGap));
 
         JButton createGuestButton = new JButton("Create Guest Profile");
-        createGuestButton.setBackground(new Color(255, 204, 153));
-        createGuestButton.setOpaque(true);
-        createGuestButton.setBorderPainted(false);
+        createGuestButton.setBackground(new Color(255, 230, 245));
         createGuestButton.addActionListener(e -> {
-            this.setSize(500, 400);
+            this.setSize(800, 500);
             cardLayout.show(cardPanel, "GuestProfile");
         });
+        styleButton.accept(createGuestButton);
         buttonPanel.add(createGuestButton);
+        buttonPanel.add(Box.createVerticalStrut(verticalGap));
 
         JButton returnButton = new JButton("Return");
-        returnButton.setBackground(Color.LIGHT_GRAY);
-        returnButton.setOpaque(true);
-        returnButton.setBorderPainted(false);
+        returnButton.setBackground(new Color(250, 116, 196));
         returnButton.addActionListener(e -> {
-            this.setSize(500, 400);
+            this.setSize(800, 640);
             cardLayout.show(cardPanel, "MainMenu");
         });
+        styleButton.accept(returnButton);
         buttonPanel.add(returnButton);
 
         reservationPanel.add(buttonPanel, BorderLayout.CENTER);

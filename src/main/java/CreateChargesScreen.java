@@ -13,24 +13,36 @@ public class CreateChargesScreen extends JPanel {
 
     public CreateChargesScreen(CardLayout cardLayout, JPanel cardPanel, JFrame mainFrame) {
         setLayout(new BorderLayout());
-        setBackground(new Color(255, 255, 204));
+        setBackground(new Color(255, 204, 236));
 
         JLabel titleLabel = new JLabel("Create Charges", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Serif", Font.BOLD, 24));
+        titleLabel.setFont(FontUtil.loadLobsterFont(50f));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         add(titleLabel, BorderLayout.NORTH);
 
-        // Top panel: guest + room number
+        Font labelFont = new Font("Serif", Font.BOLD, 16);
+        Font valueFont = new Font("Serif", Font.PLAIN, 16);
+
         JPanel topPanel = new JPanel(new GridLayout(2, 2, 10, 10));
-        topPanel.setBorder(BorderFactory.createTitledBorder("Select Guest"));
+        topPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.decode("#FA74C4")),
+                "Select Guest", 0, 0, labelFont));
+        topPanel.setOpaque(false);
 
         guestDropdown = new JComboBox<>();
+        guestDropdown.setFont(valueFont);
         roomField = new JTextField();
         roomField.setEditable(false);
+        roomField.setFont(valueFont);
 
-        topPanel.add(new JLabel("Guest:"));
+        JLabel guestLabel = new JLabel("Guest:");
+        guestLabel.setFont(labelFont);
+        JLabel roomLabel = new JLabel("Room Number:");
+        roomLabel.setFont(labelFont);
+
+        topPanel.add(guestLabel);
         topPanel.add(guestDropdown);
-        topPanel.add(new JLabel("Room Number:"));
+        topPanel.add(roomLabel);
         topPanel.add(roomField);
 
         guestDropdown.addActionListener(e -> {
@@ -40,36 +52,65 @@ public class CreateChargesScreen extends JPanel {
             }
         });
 
-        add(topPanel, BorderLayout.NORTH);
+        JPanel paddedTop = new JPanel(new BorderLayout());
+        paddedTop.setOpaque(false);
+        paddedTop.setBorder(BorderFactory.createEmptyBorder(10, 100, 10, 100));
+        paddedTop.add(topPanel, BorderLayout.CENTER);
+        add(paddedTop, BorderLayout.NORTH);
 
-        // Charges section
         chargesPanel = new JPanel();
         chargesPanel.setLayout(new BoxLayout(chargesPanel, BoxLayout.Y_AXIS));
-        JScrollPane scrollPane = new JScrollPane(chargesPanel);
+        chargesPanel.setOpaque(false);
+
+        JPanel chargesWrapper = new JPanel(new BorderLayout());
+        chargesWrapper.setOpaque(false);
+        chargesWrapper.add(chargesPanel, BorderLayout.NORTH); // <-- key to top-aligning
+
+        JScrollPane scrollPane = new JScrollPane(chargesWrapper);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.CENTER);
 
-        addChargeRow(); // initial row
+        addChargeRow();
 
-        // Buttons
         JPanel bottomPanel = new JPanel();
-        JButton addRowButton = new JButton("➕ Add Charge");
+        bottomPanel.setBackground(new Color(255, 204, 236));
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JButton addRowButton = new JButton("Add Charge");
         JButton saveButton = new JButton("Save Charges");
         JButton returnButton = new JButton("Return");
+
+        addRowButton.setFont(labelFont);
+        saveButton.setFont(labelFont);
+        returnButton.setFont(labelFont);
+
+        addRowButton.setPreferredSize(new Dimension(160, 45));
+        saveButton.setPreferredSize(new Dimension(160, 45));
+        returnButton.setPreferredSize(new Dimension(160, 45));
+
+        Color btnColor = new Color(250, 116, 196);
+        for (JButton b : new JButton[]{addRowButton, saveButton, returnButton}) {
+            b.setBackground(btnColor);
+            b.setOpaque(true);
+            b.setBorderPainted(false);
+        }
 
         addRowButton.addActionListener(e -> addChargeRow());
         saveButton.addActionListener(e -> saveCharges());
         returnButton.addActionListener(e -> {
-            mainFrame.setSize(500, 400);
+            mainFrame.setSize(800, 640);
             cardLayout.show(cardPanel, "MainMenu");
         });
 
         bottomPanel.add(addRowButton);
+        bottomPanel.add(Box.createHorizontalStrut(20));
         bottomPanel.add(saveButton);
+        bottomPanel.add(Box.createHorizontalStrut(20));
         bottomPanel.add(returnButton);
 
         add(bottomPanel, BorderLayout.SOUTH);
 
-        // Initial load of guest data
         reloadGuestList();
     }
 
@@ -82,6 +123,7 @@ public class CreateChargesScreen extends JPanel {
                 FROM hbs.stay s
                 JOIN hbs.guest g ON s.guest_id = g.guest_id
                 WHERE room_number is not null
+                AND s.checked_out_yn = 'N'
                 ORDER BY g.last_name, g.first_name
                 """;
             PreparedStatement stmt = conn.prepareStatement(sql);
@@ -102,10 +144,16 @@ public class CreateChargesScreen extends JPanel {
 
     private void addChargeRow() {
         ChargeRowPanel row = new ChargeRowPanel(this);
-        chargesPanel.add(row);
         chargeRows.add(row);
-        revalidate();
-        repaint();
+        chargesPanel.add(row);
+
+        // Ensure the new row appears at the bottom and is visible
+        chargesPanel.revalidate();
+        chargesPanel.repaint();
+
+        SwingUtilities.invokeLater(() -> {
+            chargesPanel.scrollRectToVisible(row.getBounds());
+        });
     }
 
     protected void removeChargeRow(ChargeRowPanel row) {
@@ -122,7 +170,6 @@ public class CreateChargesScreen extends JPanel {
             return;
         }
 
-        // Verify guest is still checked in
         try (Connection conn = DBUtil.getConnection()) {
             String validateSql = "SELECT check_out_date FROM hbs.stay WHERE stay_id = ?";
             PreparedStatement validateStmt = conn.prepareStatement(validateSql);
@@ -144,7 +191,6 @@ public class CreateChargesScreen extends JPanel {
             return;
         }
 
-        // Save charges
         try (Connection conn = DBUtil.getConnection()) {
             conn.setAutoCommit(false);
             String sql = "INSERT INTO hbs.charge (stay_id, charge_date, charge_type, amount) VALUES (?, ?, ?, ?)";
@@ -262,7 +308,7 @@ class ChargeRowPanel extends JPanel {
             }
         });
 
-        JButton removeButton = new JButton("❌");
+        JButton removeButton = new JButton("Remove Charge");
         removeButton.addActionListener((ActionEvent e) -> parent.removeChargeRow(this));
 
         add(new JLabel("Date:"));
